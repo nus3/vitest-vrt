@@ -1,0 +1,98 @@
+name: VRT
+
+# VRT は差分の性質上ノイズになりやすいので通常の CI では回さず、手動実行する。
+on:
+  workflow_dispatch:
+    inputs:
+      update-baseline:
+        description: 差分が出たらベースライン画像を更新する PR を作成する
+        type: boolean
+        required: false
+        default: true
+  # 定期実行したい場合は以下を有効化する(例: 毎週月曜 0:00 JST)
+  # schedule:
+  #   - cron: "0 15 * * 0"
+
+permissions:
+  contents: write # ベースライン更新ブランチを push するため
+  pull-requests: write # 更新 PR を作成するため
+
+jobs:
+  vrt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: voidzero-dev/setup-vp@2dec1e33f4ab2c6d5bce1b0c4607961bb1a3f7a1 # v1.12.0
+        with:
+          node-version: "24"
+          cache: true
+
+      - run: vp install --frozen-lockfile
+
+      # VRT も Browser Mode で動くので Playwright(Chromium)が必要
+      - run: vp run dev:setup
+
+      # 差分があっても後続(差分アップロード・PR 作成)まで進めたいので continue-on-error にする
+      - name: Run VRT
+        id: vrt
+        continue-on-error: true
+        run: vp test --project vrt
+
+      # 差分が出たときのために、実際のスクリーンショット/差分画像をアップロードする
+      - name: Upload VRT diff screenshots
+        if: steps.vrt.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vrt-diff-screenshots
+          path: |
+            .vitest-attachments/
+            tests/vrt/__screenshots__/
+          if-no-files-found: ignore
+          retention-days: 5
+
+      # 差分が出た場合、ベースライン画像を更新する(Linux 用のベースラインが未コミットの初回もここで生成される)
+      - name: Update baseline screenshots
+        if: steps.vrt.outcome == 'failure' && inputs.update-baseline
+        run: vp test --project vrt --update
+
+      # 更新されたベースライン画像を 1 つの PR にまとめる
+      - name: Create PR with updated screenshots
+        id: create-pr
+        if: steps.vrt.outcome == 'failure' && inputs.update-baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH_NAME="vrt-update-screenshots-${GITHUB_RUN_ID}"
+          git checkout -b "$BRANCH_NAME"
+
+          git add tests/vrt/__screenshots__/
+          if git diff --cached --quiet; then
+            echo "No screenshot changes detected"
+            exit 0
+          fi
+
+          git commit -m "chore(vrt): update baseline screenshots"
+          git push origin "$BRANCH_NAME"
+
+          job_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PR_BODY=$(printf "VRT で差分が検出されたため、ベースライン画像を更新しました。\n\n差分画像はワークフロー実行ページの Artifacts からダウンロードできます。\n%s" "$job_url")
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "chore(vrt): update baseline screenshots" \
+            --body "$PR_BODY"
+
+      # --- VRT 結果を Slack に通知する場合の例(既定では無効化。使う場合はこのステップを有効化する) ---
+      # - name: Notify Slack
+      #   if: always()
+      #   uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
+      #   with:
+      #     webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     webhook-type: webhook-trigger
+      #     payload: |
+      #       status: "${{ steps.vrt.outcome }}"
+      #       workflow_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

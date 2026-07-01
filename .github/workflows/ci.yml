@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write # flaky テスト検出時に PR へコメントするため
+
+jobs:
+  check-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # Vite+ / Node.js / パッケージマネージャのセットアップと依存キャッシュを一括で行う
+      - uses: voidzero-dev/setup-vp@2dec1e33f4ab2c6d5bce1b0c4607961bb1a3f7a1 # v1.12.0
+        with:
+          node-version: "24"
+          cache: true
+
+      - run: vp install --frozen-lockfile
+
+      # Browser Mode のテスト用に Playwright(Chromium)をインストールする。
+      # --with-deps で Linux runner に必要な OS 依存も入れる(package.json の dev:setup)。
+      - run: vp run dev:setup
+
+      - run: vp check
+
+      # jsdom と Browser Mode のテストを実行する(VRT は vrt.yml で手動実行)
+      - run: vp test --project jsdom --project browser
+
+      # リトライで救済された flaky テストがあれば、この PR にコメントで通知する
+      - name: Report flaky tests
+        if: always() && github.event_name == 'pull_request'
+        uses: ./.github/actions/flaky-test-report
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
