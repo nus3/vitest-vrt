@@ -1,0 +1,87 @@
+name: VRT
+
+on:
+  workflow_dispatch:
+    inputs:
+      update-baseline:
+        description: 差分が出たらベースライン画像を更新する PR を作成する
+        type: boolean
+        required: false
+        default: true
+  # 定期実行したい場合
+  # schedule:
+  #   - cron: "0 15 * * 0"
+
+permissions:
+  contents: write # VRTで差分があった場合に、画像を更新したブランチを push するため
+  pull-requests: write # 更新 PR を作成するため
+
+jobs:
+  vrt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: voidzero-dev/setup-vp@2dec1e33f4ab2c6d5bce1b0c4607961bb1a3f7a1 # v1.12.0
+        with:
+          node-version: "24"
+          cache: true
+
+      - run: vp install --frozen-lockfile
+
+      # Playwright(Chromium)のインストール
+      - run: vp run dev:setup
+
+      # VRTで差分があった場合にテストはfailureになるが
+      # その後の処理(差分アップロード・PR 作成)まで進めたいので continue-on-error にする
+      - name: Run VRT
+        id: vrt
+        continue-on-error: true
+        run: vp test --project vrt
+
+      # 差分が出たときのために、実際のスクリーンショット/差分画像をアップロードする
+      - name: Upload VRT diff screenshots
+        if: steps.vrt.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vrt-diff-screenshots
+          path: |
+            .vitest-attachments/
+            tests/vrt/__screenshots__/
+          if-no-files-found: ignore
+          retention-days: 5
+
+      # 差分が出た場合、VRTのベースになる画像を更新する
+      - name: Update baseline screenshots
+        if: steps.vrt.outcome == 'failure' && inputs.update-baseline
+        run: vp test --project vrt --update
+
+      # 更新されたベースライン画像を 1 つの PR にまとめる
+      - name: Create PR with updated screenshots
+        id: create-pr
+        if: steps.vrt.outcome == 'failure' && inputs.update-baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH_NAME="vrt-update-screenshots-${GITHUB_RUN_ID}"
+          git checkout -b "$BRANCH_NAME"
+
+          git add tests/vrt/__screenshots__/
+          if git diff --cached --quiet; then
+            echo "No screenshot changes detected"
+            exit 0
+          fi
+
+          git commit -m "chore(vrt): update baseline screenshots"
+          git push origin "$BRANCH_NAME"
+
+          job_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PR_BODY=$(printf "VRT で差分が検出されたため、ベースの画像を更新しました。\n\n差分画像はワークフロー実行ページの Artifacts からダウンロードできます。\n%s" "$job_url")
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "chore(vrt): update baseline screenshots" \
+            --body "$PR_BODY"

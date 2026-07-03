@@ -7,20 +7,37 @@
     "dev": "vp dev",
     "build": "tsc -b && vp build",
     "lint": "vp lint",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "dev:setup": "playwright install --with-deps chromium",
+    "test": "vp test --project jsdom --project browser",
+    "test:jsdom": "vp test --project jsdom",
+    "test:browser": "vp test --project browser",
+    "test:vrt": "vp test --project vrt",
+    "test:vrt:update": "vp test --project vrt --update",
+    "test:trace": "playwright show-trace"
   },
   "dependencies": {
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
-    "typescript": "~6.0.2",
-    "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/browser": "4.1.9",
+    "@vitest/browser-playwright": "4.1.9",
+    "jsdom": "^29.1.1",
+    "playwright": "1.55.1",
+    "typescript": "~6.0.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@^0.2.1",
+    "vite-plus": "catalog:",
+    "vitest": "4.1.9",
+    "vitest-browser-react": "2.1.0"
   },
   "devEngines": {
     "packageManager": {

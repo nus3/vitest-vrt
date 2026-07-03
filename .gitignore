@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Vitest / VRT
+# 差分画像やトレースなどの生成物は無視する(ベースライン tests/vrt/__screenshots__ は追跡する)
+.vitest-attachments
+tests/**/__traces__
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

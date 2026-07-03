@@ -1,0 +1,62 @@
+name: Report Flaky Tests
+description: flakyなテストを集約し、対象の PR にコメントとして通知する
+
+inputs:
+  report-glob:
+    description: flakyなテストケースのレポートの生成先
+    required: false
+    default: "logs/test-results/flaky-tests-report.jsonl"
+  github-token:
+    description: PR コメント投稿・PR 情報取得に使う GitHub token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Aggregate flaky tests
+      id: aggregate
+      shell: bash
+      env:
+        REPORT_GLOB: ${{ inputs.report-glob }}
+      run: |
+        # JSONL を集約
+        : > merged-flaky-tests.jsonl
+        # shellcheck disable=SC2086
+        for f in $REPORT_GLOB; do
+          [ -f "$f" ] && cat "$f" >> merged-flaky-tests.jsonl
+        done
+
+        if [ ! -s merged-flaky-tests.jsonl ]; then
+          echo "No flaky tests detected."
+          echo "has_flaky_tests=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "has_flaky_tests=true" >> "$GITHUB_OUTPUT"
+
+        # PR コメント用の Markdown を生成
+        {
+          echo "### ⚠️ Flakyなテストを検出しました"
+          echo ""
+          echo "リトライが発生したテストケースが検出されました。"
+          echo ""
+          echo "| File | Test | Retries |"
+          echo "| --- | --- | --- |"
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            file=$(echo "$line" | jq -r '.file // "unknown"')
+            name=$(echo "$line" | jq -r '.name // "unknown"')
+            retryCount=$(echo "$line" | jq -r '.retryCount // 0')
+            echo "| \`${file}\` | ${name} | ${retryCount} |"
+          done < merged-flaky-tests.jsonl
+        } > flaky-comment.md
+
+    - name: Comment on PR
+      if: steps.aggregate.outputs.has_flaky_tests == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        # 毎回新規コメントを作成する
+        gh pr comment "$PR_NUMBER" --body-file flaky-comment.md
