@@ -1,32 +1,54 @@
-# React + TypeScript + Vite
+# vitest-vrt
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Vitest ではじめるシンプルな VRT（Visual Regression Test）のサンプルリポジトリ
 
-Currently, two official plugins are available:
+[Vite+](https://viteplus.dev/) 上で、jsdom / Browser Mode / VRT の 3 種類のテストを 1 つの設定で動かす。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## テストの種類
 
-## React Compiler
+`vite.config.ts` の `test.projects` で 3 つの project を定義している。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| project   | 環境       | 用途                                            |
+| --------- | ---------- | ----------------------------------------------- |
+| `jsdom`   | jsdom      | 軽量・高速なコンポーネントテスト                |
+| `browser` | 実ブラウザ | Browser Mode（Playwright / Chromium）でのテスト |
+| `vrt`     | 実ブラウザ | スクリーンショット比較による VRT                |
 
-## Expanding the Oxlint configuration
+## セットアップ
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+pnpm install
+pnpm dev:setup   # Playwright の Chromium をインストール
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## テストの実行
+
+```sh
+pnpm test            # jsdom + browser
+pnpm test:jsdom      # jsdom のみ
+pnpm test:browser    # Browser Mode のみ
+pnpm test:vrt        # VRT を実行（ベースライン画像と比較）
+pnpm test:vrt:update # VRT のベースライン画像を更新
+```
+
+## VRT の仕組み
+
+- Browser Mode で描画した結果を `toMatchScreenshot()` でキャプチャし、コミット済みのベースライン画像と比較する。
+- 差分検出時はベースラインを確認のうえ、`pnpm test:vrt:update` で更新する。
+- flaky な差分を避けるため `vitest-vrt-setup.ts` でアニメーション / トランジションを無効化している。
+- 画像などブレやすい要素は `tests/vrt/helpers/maskImages.ts` でマスクできる。
+
+## その他
+
+- VRT は通常の CI では回さず、`.github/workflows/vrt.yml` で手動実行する。
+- flaky テストは CI ではリトライで救済しつつ検知する（`vitest-flaky-reporter.ts`）。
+
+## ディレクトリ構成
+
+```
+src/                  React コンポーネント
+tests/jsdom/          jsdom テスト
+tests/browser/        Browser Mode テスト
+tests/vrt/            VRT テスト（ベースライン画像もここに配置）
+vite.config.ts        3 project 分のテスト設定
+```
