@@ -62,6 +62,9 @@ export default defineConfig({
           globals: true,
           include: ["tests/browser/**/*.test.{ts,tsx}"],
           retry,
+          // ブラウザ内では process.env を参照できないため、
+          // CI フラグを import.meta.env.CI としてテストに公開する
+          env: { CI: process.env.CI ?? "" },
           browser: {
             ...browser,
             // ローカルではデバッグ用にトレースを取得する（CI では無効）
