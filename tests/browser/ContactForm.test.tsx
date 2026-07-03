@@ -13,7 +13,7 @@ describe("ContactForm (browser)", () => {
     await expect.element(page.getByRole("alert")).toBeVisible();
   });
 
-  it("正しく入力して送信すると成功メッセージが表示される", async () => {
+  it("入力して送信すると成功メッセージが表示される", async () => {
     const onSubmit = vi.fn();
     await render(<ContactForm onSubmit={onSubmit} />);
 

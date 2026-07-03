@@ -21,7 +21,6 @@ interface FlakyTestReport {
  */
 export default class FlakyTestReporter implements Reporter {
   onTestCaseResult(testCase: TestCase): void {
-    // CI 環境でのみ記録する（GitHub Actions では CI=true が設定される）
     if (!process.env.CI) {
       return;
     }

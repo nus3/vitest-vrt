@@ -4,9 +4,6 @@ import { render } from "vitest-browser-react";
 
 import { Counter } from "../../src/components/Counter";
 
-// Browser Mode を使ったコンポーネントテスト。
-// Playwright 経由で実ブラウザ（Chromium）上で描画・操作するため、
-// 実際のブラウザ挙動に近い形で検証できる。
 describe("Counter (browser)", () => {
   it("増やす/減らすボタンでカウントが変化する", async () => {
     await render(<Counter />);

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 
 export type ContactFormValues = {
   name: string;
@@ -9,17 +9,13 @@ type ContactFormProps = {
   onSubmit?: (values: ContactFormValues) => void;
 };
 
-/**
- * 記事用のサンプルコンポーネント。
- * 入力バリデーションと送信結果の表示を持つシンプルなお問い合わせフォーム。
- */
 export function ContactForm({ onSubmit }: ContactFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (name === "" || email === "") {

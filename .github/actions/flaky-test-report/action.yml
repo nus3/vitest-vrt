@@ -1,18 +1,14 @@
 name: Report Flaky Tests
-description: flaky テスト(リトライで救済されたテスト)のレポートを集約し、対象の PR にコメントとして通知する
+description: flakyなテストを集約し、対象の PR にコメントとして通知する
 
 inputs:
   report-glob:
-    description: flaky レポート(JSONL)の検索パス。カスタムレポーターの出力先に合わせる
+    description: flakyなテストケースのレポートの生成先
     required: false
     default: "logs/test-results/flaky-tests-report.jsonl"
   github-token:
     description: PR コメント投稿・PR 情報取得に使う GitHub token
     required: true
-  # Slack 通知を使いたい場合のための入力例(既定では未使用)。
-  # slack-webhook-url:
-  #   description: Slack Webhook URL
-  #   required: false
 
 runs:
   using: composite
@@ -23,7 +19,7 @@ runs:
       env:
         REPORT_GLOB: ${{ inputs.report-glob }}
       run: |
-        # JSONL を集約(複数 project 分が同一ファイルに追記される想定だが、念のため再帰的に集約)
+        # JSONL を集約
         : > merged-flaky-tests.jsonl
         # shellcheck disable=SC2086
         for f in $REPORT_GLOB; do
@@ -40,9 +36,9 @@ runs:
 
         # PR コメント用の Markdown を生成
         {
-          echo "### ⚠️ Flaky tests detected"
+          echo "### ⚠️ Flakyなテストを検出しました"
           echo ""
-          echo "リトライで救済された(= flaky な)テストが検出されました。"
+          echo "リトライが発生したテストケースが検出されました。"
           echo ""
           echo "| File | Test | Retries |"
           echo "| --- | --- | --- |"
@@ -62,16 +58,5 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
-        # 要望どおり毎回新規コメントを作成する(--edit-last は使わない)
+        # 毎回新規コメントを作成する
         gh pr comment "$PR_NUMBER" --body-file flaky-comment.md
-
-    # --- Slack 通知を使う場合の例(既定では無効化。使う場合はこのステップと上の slack-webhook-url を有効化する) ---
-    # - name: Notify Slack
-    #   if: steps.aggregate.outputs.has_flaky_tests == 'true'
-    #   uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-    #   with:
-    #     webhook: ${{ inputs.slack-webhook-url }}
-    #     webhook-type: webhook-trigger
-    #     payload: |
-    #       repository: "${{ github.repository }}"
-    #       pr_url: "${{ github.event.pull_request.html_url }}"

@@ -4,10 +4,6 @@ type CounterProps = {
   initialCount?: number;
 };
 
-/**
- * 記事用のサンプルコンポーネント。
- * 増減・リセットができるシンプルなカウンター。
- */
 export function Counter({ initialCount = 0 }: CounterProps) {
   const [count, setCount] = useState(initialCount);
 

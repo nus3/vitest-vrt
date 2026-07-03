@@ -4,8 +4,7 @@ import { render } from "vitest-browser-react";
 import { maskImages } from "./helpers/maskImages";
 
 // VRT ヘルパー maskImages のデモ。
-// 外部 URL の画像は VRT 環境で読み込めず差分やタイムアウトの原因になるため、
-// キャプチャ前にマゼンタの単色画像で塗り潰して安定させる。
+// 外部 URL の画像を置き換える
 describe("maskImages (VRT ヘルパー)", () => {
   it("読み込めない画像をマスクしてスクリーンショットを安定させる", async () => {
     maskImages("img[data-mask]");

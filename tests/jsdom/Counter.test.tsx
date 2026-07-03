@@ -4,8 +4,6 @@ import userEvent from "@testing-library/user-event";
 
 import { Counter } from "../../src/components/Counter";
 
-// jsdom を使ったコンポーネントテスト。
-// 実ブラウザを起動しないため軽量・高速で、ロジックや DOM の検証に向く。
 describe("Counter (jsdom)", () => {
   it("初期値を表示する", () => {
     render(<Counter initialCount={3} />);

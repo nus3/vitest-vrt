@@ -33,7 +33,7 @@ jobs:
       # jsdom と Browser Mode のテストを実行する(VRT は vrt.yml で手動実行)
       - run: vp test --project jsdom --project browser
 
-      # リトライで救済された flaky テストがあれば、この PR にコメントで通知する
+      # flaky テストがあれば、この PR にコメントで通知する
       - name: Report flaky tests
         if: always() && github.event_name == 'pull_request'
         uses: ./.github/actions/flaky-test-report

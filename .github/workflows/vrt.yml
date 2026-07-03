@@ -1,6 +1,5 @@
 name: VRT
 
-# VRT は差分の性質上ノイズになりやすいので通常の CI では回さず、手動実行する。
 on:
   workflow_dispatch:
     inputs:
@@ -9,12 +8,12 @@ on:
         type: boolean
         required: false
         default: true
-  # 定期実行したい場合は以下を有効化する(例: 毎週月曜 0:00 JST)
+  # 定期実行したい場合
   # schedule:
   #   - cron: "0 15 * * 0"
 
 permissions:
-  contents: write # ベースライン更新ブランチを push するため
+  contents: write # VRTで差分があった場合に、画像を更新したブランチを push するため
   pull-requests: write # 更新 PR を作成するため
 
 jobs:
@@ -30,10 +29,11 @@ jobs:
 
       - run: vp install --frozen-lockfile
 
-      # VRT も Browser Mode で動くので Playwright(Chromium)が必要
+      # Playwright(Chromium)のインストール
       - run: vp run dev:setup
 
-      # 差分があっても後続(差分アップロード・PR 作成)まで進めたいので continue-on-error にする
+      # VRTで差分があった場合にテストはfailureになるが
+      # その後の処理(差分アップロード・PR 作成)まで進めたいので continue-on-error にする
       - name: Run VRT
         id: vrt
         continue-on-error: true
@@ -51,7 +51,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
-      # 差分が出た場合、ベースライン画像を更新する(Linux 用のベースラインが未コミットの初回もここで生成される)
+      # 差分が出た場合、VRTのベースになる画像を更新する
       - name: Update baseline screenshots
         if: steps.vrt.outcome == 'failure' && inputs.update-baseline
         run: vp test --project vrt --update
@@ -79,20 +79,9 @@ jobs:
           git push origin "$BRANCH_NAME"
 
           job_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          PR_BODY=$(printf "VRT で差分が検出されたため、ベースライン画像を更新しました。\n\n差分画像はワークフロー実行ページの Artifacts からダウンロードできます。\n%s" "$job_url")
+          PR_BODY=$(printf "VRT で差分が検出されたため、ベースの画像を更新しました。\n\n差分画像はワークフロー実行ページの Artifacts からダウンロードできます。\n%s" "$job_url")
           gh pr create \
             --base main \
             --head "$BRANCH_NAME" \
             --title "chore(vrt): update baseline screenshots" \
             --body "$PR_BODY"
-
-      # --- VRT 結果を Slack に通知する場合の例(既定では無効化。使う場合はこのステップを有効化する) ---
-      # - name: Notify Slack
-      #   if: always()
-      #   uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-      #   with:
-      #     webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-      #     webhook-type: webhook-trigger
-      #     payload: |
-      #       status: "${{ steps.vrt.outcome }}"
-      #       workflow_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

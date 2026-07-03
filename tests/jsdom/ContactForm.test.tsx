@@ -25,7 +25,7 @@ describe("ContactForm (jsdom)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("形式が正しくありません");
   });
 
-  it("正しく入力して送信すると onSubmit が呼ばれ成功メッセージが出る", async () => {
+  it("入力して送信すると onSubmit が呼ばれ成功メッセージが出る", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<ContactForm onSubmit={onSubmit} />);
