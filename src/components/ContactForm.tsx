@@ -1,5 +1,7 @@
 import { useState, type SubmitEvent } from "react";
 
+import styles from "./ContactForm.module.css";
+
 export type ContactFormValues = {
   name: string;
   email: string;
@@ -35,18 +37,26 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
   };
 
   return (
-    <form className="contact-form" aria-label="お問い合わせフォーム" onSubmit={handleSubmit}>
-      <div className="field">
+    <form className={styles.form} aria-label="お問い合わせフォーム" onSubmit={handleSubmit}>
+      <div className={styles.field}>
         <label htmlFor="name">名前</label>
         <input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
-      <div className="field">
+      <div className={styles.field}>
         <label htmlFor="email">メールアドレス</label>
         <input id="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
 
-      {error !== null && <p role="alert">{error}</p>}
-      {submitted && <p role="status">送信しました</p>}
+      {error !== null && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
+      {submitted && (
+        <p className={styles.status} role="status">
+          送信しました
+        </p>
+      )}
 
       <button type="submit">送信</button>
     </form>
