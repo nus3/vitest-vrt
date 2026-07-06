@@ -48,9 +48,8 @@ export default defineConfig({
         plugins: [react()],
         test: {
           name: "jsdom",
-          globals: true,
           environment: "jsdom",
-          setupFiles: ["./vitest-setup.ts"],
+          setupFiles: ["./vitest-jsdom-setup.ts"],
           include: ["tests/jsdom/**/*.test.{ts,tsx}"],
           retry,
         },
@@ -59,7 +58,6 @@ export default defineConfig({
         plugins: [react()],
         test: {
           name: "browser",
-          globals: true,
           include: ["tests/browser/**/*.test.{ts,tsx}"],
           retry,
           // ブラウザ内では process.env を参照できないため、
@@ -76,7 +74,6 @@ export default defineConfig({
         plugins: [react()],
         test: {
           name: "vrt",
-          globals: true,
           setupFiles: ["./vitest-vrt-setup.ts"],
           include: ["tests/vrt/**/*.test.{ts,tsx}"],
           retry,
